@@ -60,3 +60,209 @@
 ### Сценарий: совместное редактирование документа
 1. Пользователь выбирает документ, редактируемый в данный момент другим пользователем, открывает его и попадает в режим совместного редактирования.
 2. Пользователь в реальном времени видит изменения, вносимые другими пользователями.
+
+## 6. Архитектура
+
+Основные компоненты:
+1. API Gateway — единая точка входа, маршрутизация HTTP и WebSocket запросов.
+2. Document Service — сервис хранения и обработки документов, применяет CRDT-алгоритм.
+3. Collaboration Hub — сервис синхронизации в реальном времени между пользователями (через WebSocket).
+4. Document DB — база данных для хранения документов.
+5. Auth Service — сервис аутентификации и авторизации пользователей.
+6. User DB — база данных пользователей и прав доступа.
+7. Message Broker — для рассылки событий синхронизации и уведомлений.
+
+```mermaid
+graph TD
+  subgraph Client
+    UserApp[Клиентское приложение]
+  end
+
+  subgraph Gateway
+    APIGateway[API Gateway]
+  end
+
+  subgraph Services
+    Auth[Auth Service]
+    Document[Document Service]
+    Collaboration[Collaboration Hub]
+    Broker[Message Broker]
+  end
+
+  subgraph Databases
+    UserDB[(User DB)]
+    DocDB[(Document DB)]
+  end
+
+  UserApp-->|HTTP/WebSocket|APIGateway
+  APIGateway-->|gRPC/HTTP|Auth
+  APIGateway-->|gRPC/WebSocket|Collaboration
+  APIGateway-->|gRPC/HTTP|Document
+  Auth-->|SQL|UserDB
+  Document-->|SQL|DocDB
+  Collaboration-->|Events|Broker
+  Broker-->|SQL|DocDB
+```
+
+## 7. Технические сценарии
+### Сценарий: подключение к документу и одиночное редактирование
+1. Клиент открывает документ и устанавливает WebSocket-соединение с Collaboration Hub через API Gateway.
+2. Collaboration Hub проверяет права доступа через Auth Service.
+3. После успешной авторизации клиент получает текущую версию документа из Document Service.
+4. Document Service периодически сохраняет агрегированное состояние документа в базу.
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant APIGateway
+  participant CollaborationHub
+  participant AuthService
+  participant DocumentService
+  participant DocumentDB
+
+  Client->>APIGateway: Установить WebSocket-соединение
+  APIGateway->>CollaborationHub: Проброс соединения
+  CollaborationHub->>AuthService: Проверка прав доступа
+  AuthService-->>CollaborationHub: OK
+  CollaborationHub->>DocumentService: Запрос текущей версии документа
+  DocumentService->>DocumentDB: SELECT документ
+  DocumentDB-->>DocumentService: Данные документа
+  DocumentService-->>CollaborationHub: Текущая версия
+  CollaborationHub-->>Client: Передача документа
+
+  loop Периодически
+    DocumentService->>DocumentDB: Сохранение агрегированного состояния
+    DocumentDB-->>DocumentService: OK
+  end
+```
+
+### Сценарий: подключение к документу и совместное редактирование с синхронизацией
+1. Клиент открывает документ и устанавливает WebSocket-соединение с Collaboration Hub через API Gateway.
+2. Collaboration Hub проверяет права доступа через Auth Service.
+3. После успешной авторизации клиент получает текущую версию документа из Document Service.
+4. Все изменения пользователя отправляются через WebSocket на Collaboration Hub.
+5. Collaboration Hub применяет алгоритм CRDT, обновляет состояние документа и рассылает дельты другим клиентам.
+6. Document Service периодически сохраняет агрегированное состояние документа в базу.
+
+```mermaid
+sequenceDiagram
+  participant ClientA
+  participant ClientB
+  participant APIGateway
+  participant CollaborationHub
+  participant AuthService
+  participant DocumentService
+  participant DocumentDB
+
+  ClientA->>APIGateway: Установить WebSocket-соединение
+  APIGateway->>CollaborationHub: Проброс соединения
+  CollaborationHub->>AuthService: Проверка прав доступа
+  AuthService-->>CollaborationHub: OK
+  CollaborationHub->>DocumentService: Запрос текущей версии документа
+  DocumentService->>DocumentDB: SELECT документ
+  DocumentDB-->>DocumentService: Данные документа
+  DocumentService-->>CollaborationHub: Текущая версия
+  CollaborationHub-->>ClientA: Передача документа
+
+  ClientB->>APIGateway: Установить WebSocket-соединение
+  APIGateway->>CollaborationHub: Проброс соединения
+  CollaborationHub->>AuthService: Проверка прав доступа
+  AuthService-->>CollaborationHub: OK
+  CollaborationHub-->>ClientB: Передача текущей версии документа
+
+  ClientA->>CollaborationHub: Изменения (дельты)
+  CollaborationHub->>CollaborationHub: Применение CRDT, обновление состояния
+  CollaborationHub-->>ClientB: Рассылка дельт
+  ClientB->>CollaborationHub: Изменения (дельты)
+  CollaborationHub->>CollaborationHub: Применение CRDT, обновление состояния
+  CollaborationHub-->>ClientA: Рассылка дельт
+
+  loop Периодически
+    DocumentService->>DocumentDB: Сохранение агрегированного состояния
+    DocumentDB-->>DocumentService: OK
+  end
+```
+
+
+### Сценарий: приглашение пользователя
+1. Пользователь-инициатор открывает документ и выбирает опцию «Пригласить пользователя».
+2. Клиентское приложение отправляет через API Gateway запрос на изменение права доступа
+3. API Gateway перенаправляет запрос в Auth Service для проверки существования приглашённого пользователя.
+4. Auth Service обращается к User DB и возвращает результат проверки.
+5. Если пользователь существует, запрос передаётся в Document Service. 
+6. Document Service проверяет права инициатора (должен быть владельцем или администратором документа). В случае успеха Document Service обновляет Document DB, добавляя нового пользователя с нужным уровнем доступа.
+7. Document Service публикует событие UserInvited в Message Broker.
+8. API Gateway возвращает инициатору ответ об успешном приглашении.
+9. Приглашённый пользователь видит документ в своём списке
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant APIGateway
+  participant AuthService
+  participant UserDB
+  participant DocumentService
+  participant DocumentDB
+  participant MessageBroker
+
+  Client->>APIGateway: POST /invite (user_login, document_id)
+  APIGateway->>AuthService: Проверка существования пользователя
+  AuthService->>UserDB: SELECT user_login
+  UserDB-->>AuthService: Пользователь найден
+  AuthService-->>APIGateway: OK
+  APIGateway->>DocumentService: Запрос на добавление пользователя к документу
+  DocumentService->>DocumentDB: Проверка прав инициатора
+  DocumentService->>DocumentDB: Обновление прав доступа (ACL)
+  DocumentDB-->>DocumentService: OK
+  DocumentService->>MessageBroker: Событие UserInvited
+  DocumentService-->>APIGateway: Успех
+  APIGateway-->>Client: Приглашение успешно
+```
+
+## 8. План разработки и тестирования
+
+### 8.1 Основной проект (MVP)
+**Включает:**
+- Создание и хранение документов
+- Базовое редактирование документов в реальном времени с использованием WebSocket
+- Синхронизация через Collaboration Hub
+
+**План разработки:**
+1. Проектирование API (Auth, Document, Collaboration)
+2. Реализация API Gateway
+3. Реализация Document Service (CRUD для документов)
+4. Реализация Collaboration Hub (WebSocket, синхронизация в реальном времени)
+5. Интеграция с Document DB
+6. Интеграция с брокером сообщений (Message Broker)
+7. Документирование API
+
+**План тестирования:**
+- Модульный тест для Document Service
+- Интеграционные тесты Collaboration ↔ Document
+- Тесты WebSocket соединений и рассылки обновлений
+- Проверка разрешения возможных конфликтов
+- Нагрузочные тесты на большое количество пользователей
+- Тесты на конкурентное редактирование (несколько пользователей)
+
+**Definition of Done (DoD) для MVP:**
+- Все необходимые компоненты реализованы
+- Все компоненты покрыты тестами
+
+### 8.2 Расширенный проект (Advanced Scope)
+**Включает:**
+- Авторизация пользователей
+- Расширенные права доступа (просмотр, комментирование, редактирование)
+- Поддержка вставки формул, графиков и изображений
+
+**План разработки:**
+1. Реализация Auth Service (регистрация, логин, права доступа)
+2. Реализация вставки и синхронизации дополнительных типов контента
+
+**План тестирования:**
+- Модульный тест для Auth Service
+- Тесты на корректность вставки и отображения мультимедийного контента
+- Тесты прав доступа
+
+**Definition of Done (DoD) для расширенного проекта:**
+- Все необходимые компоненты реализованы
+- Все компоненты покрыты тестами
