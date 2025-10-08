@@ -65,8 +65,8 @@
 
 Основные компоненты:
 1. API Gateway — единая точка входа, маршрутизация HTTP и WebSocket запросов.
-2. Document Service — сервис хранения и обработки документов, применяет CRDT-алгоритм.
-3. Collaboration Hub — сервис синхронизации в реальном времени между пользователями (через WebSocket).
+2. Document Service — сервис хранения и обработки документов.
+3. Collaboration Hub — сервис синхронизации в реальном времени между пользователями (через WebSocket) Применяет CRDT-алгоритм
 4. Document DB — база данных для хранения документов.
 5. Auth Service — сервис аутентификации и авторизации пользователей.
 6. User DB — база данных пользователей и прав доступа.
@@ -101,7 +101,7 @@ graph TD
   Auth-->|SQL|UserDB
   Document-->|SQL|DocDB
   Collaboration-->|Events|Broker
-  Broker-->|SQL|DocDB
+  Broker-->|Events|Document
 ```
 
 ## 7. Технические сценарии
@@ -109,7 +109,10 @@ graph TD
 1. Клиент открывает документ и устанавливает WebSocket-соединение с Collaboration Hub через API Gateway.
 2. Collaboration Hub проверяет права доступа через Auth Service.
 3. После успешной авторизации клиент получает текущую версию документа из Document Service.
-4. Document Service периодически сохраняет агрегированное состояние документа в базу.
+4. Все изменения, вносимые клиентом, Collaboration Hub обрабатывает локально и публикует события редактирования в Message Broker.
+5. Document Service читает события из Message Broker, агрегирует изменения и формирует текущее состояние документа.
+6. Периодически или по условию Collaboration Hub отправляет агрегированное состояние документа в Document Service (например, для консистентности или снапшота).
+7. Document Service периодически сохраняет агрегированное состояние документа в Document DB.
 
 ```mermaid
 sequenceDiagram
@@ -117,6 +120,7 @@ sequenceDiagram
   participant APIGateway
   participant CollaborationHub
   participant AuthService
+  participant MessageBroker
   participant DocumentService
   participant DocumentDB
 
@@ -130,10 +134,55 @@ sequenceDiagram
   DocumentService-->>CollaborationHub: Текущая версия
   CollaborationHub-->>Client: Передача документа
 
+  Client->>CollaborationHub: Изменения (дельты)
+  CollaborationHub->>MessageBroker: Публикация событий редактирования
+
+  loop Чтение событий
+    DocumentService->>MessageBroker: Подписка на события
+    MessageBroker-->>DocumentService: События редактирования
+    DocumentService->>DocumentService: Агрегация состояния
+  end
+
+  loop Периодически/по условию
+    CollaborationHub->>DocumentService: Передача текущего агрегированного состояния
+  end
+
   loop Периодически
     DocumentService->>DocumentDB: Сохранение агрегированного состояния
     DocumentDB-->>DocumentService: OK
   end
+
+```
+
+### Сценарий: приглашение пользователя
+1. Пользователь-инициатор открывает документ и выбирает опцию «Пригласить пользователя».
+2. Клиентское приложение отправляет через API Gateway запрос на изменение права доступа
+3. API Gateway перенаправляет запрос в Auth Service для проверки существования приглашённого пользователя.
+4. Auth Service обращается к User DB и возвращает результат проверки.
+5. Если пользователь существует, запрос передаётся в Document Service. 
+6. Document Service проверяет права инициатора (должен быть владельцем или администратором документа). В случае успеха Document Service обновляет Document DB, добавляя нового пользователя с нужным уровнем доступа.
+7. Приглашённый пользователь видит документ в своём списке
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant APIGateway
+  participant AuthService
+  participant UserDB
+  participant DocumentService
+  participant DocumentDB
+
+  Client->>APIGateway: POST /invite (user_login, document_id)
+  APIGateway->>AuthService: Проверка существования пользователя
+  AuthService->>UserDB: SELECT user_login
+  UserDB-->>AuthService: Пользователь найден
+  AuthService-->>APIGateway: OK
+  APIGateway->>DocumentService: Запрос на добавление пользователя к документу
+  DocumentService->>DocumentDB: Проверка прав инициатора
+  DocumentService->>DocumentDB: Обновление прав доступа (ACL)
+  DocumentDB-->>DocumentService: OK
+  DocumentService-->>APIGateway: Успех
+  APIGateway-->>Client: Приглашение успешно
 ```
 
 ### Сценарий: подключение к документу и совместное редактирование с синхронизацией
@@ -183,42 +232,6 @@ sequenceDiagram
   end
 ```
 
-
-### Сценарий: приглашение пользователя
-1. Пользователь-инициатор открывает документ и выбирает опцию «Пригласить пользователя».
-2. Клиентское приложение отправляет через API Gateway запрос на изменение права доступа
-3. API Gateway перенаправляет запрос в Auth Service для проверки существования приглашённого пользователя.
-4. Auth Service обращается к User DB и возвращает результат проверки.
-5. Если пользователь существует, запрос передаётся в Document Service. 
-6. Document Service проверяет права инициатора (должен быть владельцем или администратором документа). В случае успеха Document Service обновляет Document DB, добавляя нового пользователя с нужным уровнем доступа.
-7. Document Service публикует событие UserInvited в Message Broker.
-8. API Gateway возвращает инициатору ответ об успешном приглашении.
-9. Приглашённый пользователь видит документ в своём списке
-
-```mermaid
-sequenceDiagram
-  participant Client
-  participant APIGateway
-  participant AuthService
-  participant UserDB
-  participant DocumentService
-  participant DocumentDB
-  participant MessageBroker
-
-  Client->>APIGateway: POST /invite (user_login, document_id)
-  APIGateway->>AuthService: Проверка существования пользователя
-  AuthService->>UserDB: SELECT user_login
-  UserDB-->>AuthService: Пользователь найден
-  AuthService-->>APIGateway: OK
-  APIGateway->>DocumentService: Запрос на добавление пользователя к документу
-  DocumentService->>DocumentDB: Проверка прав инициатора
-  DocumentService->>DocumentDB: Обновление прав доступа (ACL)
-  DocumentDB-->>DocumentService: OK
-  DocumentService->>MessageBroker: Событие UserInvited
-  DocumentService-->>APIGateway: Успех
-  APIGateway-->>Client: Приглашение успешно
-```
-
 ## 8. План разработки и тестирования
 
 ### 8.1 Основной проект (MVP)
@@ -228,25 +241,28 @@ sequenceDiagram
 - Синхронизация через Collaboration Hub
 
 **План разработки:**
-1. Проектирование API (Auth, Document, Collaboration)
+1. Проектирование API (Document, Collaboration)
 2. Реализация API Gateway
 3. Реализация Document Service (CRUD для документов)
 4. Реализация Collaboration Hub (WebSocket, синхронизация в реальном времени)
 5. Интеграция с Document DB
 6. Интеграция с брокером сообщений (Message Broker)
-7. Документирование API
 
 **План тестирования:**
 - Модульный тест для Document Service
 - Интеграционные тесты Collaboration ↔ Document
 - Тесты WebSocket соединений и рассылки обновлений
-- Проверка разрешения возможных конфликтов
-- Нагрузочные тесты на большое количество пользователей
-- Тесты на конкурентное редактирование (несколько пользователей)
+- Проверка разрешения возможных конфликтов: Одновременное редактирование одной и той же строки, вставка в одну позицию, Одновременные правки в соседних позициях, Быстрая серия операций.
+- Нагрузочные тесты на большое количество пользователей (более 20)
+- Тесты на конкурентное редактирование (максимально возможное (10) количество пользователей)
 
 **Definition of Done (DoD) для MVP:**
-- Все необходимые компоненты реализованы
-- Все компоненты покрыты тестами
+MVP считается завершённым, если:
+- Документы успешно сохраняются в системе
+- Реализовано редактирование документов в реальном времени
+- При одновременном редактировании документа двумя пользователями конфликты разрешаются автоматически
+- Написаны и успешно пройдены базовые модульные и интеграционные тесты.
+- Подготовлена пользовательская документация по запуску и базовому использованию системы.
 
 ### 8.2 Расширенный проект (Advanced Scope)
 **Включает:**
@@ -264,5 +280,9 @@ sequenceDiagram
 - Тесты прав доступа
 
 **Definition of Done (DoD) для расширенного проекта:**
-- Все необходимые компоненты реализованы
-- Все компоненты покрыты тестами
+Advanced Scope считается завершённым, если выполнены все пункты MVP, а также:
+- Продемонстрирована работа новой ролевой модели
+- Реализована регистрация и авторизация пользователей.
+- Реализованы расширенные механизмы управления доступом к документам (разграничение ролей, отзыв прав, приглашения).
+- Реализована поддержка формул и диаграмм (LaTeX и Mermaid).
+- Написаны и успешно пройдены базовые модульные и интеграционные тесты.
