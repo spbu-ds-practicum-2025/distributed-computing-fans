@@ -1,0 +1,5 @@
+. venv/Scripts/activate
+pip install -r requirements.txt
+
+export DOC_SERVICE_URL="http://localhost:8001"
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
