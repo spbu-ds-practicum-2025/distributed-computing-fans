@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${DB_NAME:-conspektor}
+      POSTGRES_USER: ${DB_USER:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./services/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - DOC_SERVICE_URL=http://document-service:8001
+      - COLLAB_HUB_URL=http://collaboration-hub:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  document-service:
+    build: ./services/documents-services
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-app}:${DB_PASSWORD:-password}@postgres:5432/${DB_NAME:-conspektor}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
