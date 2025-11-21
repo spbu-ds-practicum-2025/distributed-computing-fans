@@ -32,9 +32,9 @@ class Database:
             return [dict(row) for row in rows]
 
     async def get_document(self, doc_id: str) -> Optional[Dict]:
-        cached = await cache.get_document(doc_id)
-        if cached:
-            return cached
+        # cached = await cache.get_document(doc_id)
+        # if cached:
+        #     return cached
 
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -45,7 +45,7 @@ class Database:
             
             if row:
                 document = dict(row)
-                await cache.set_document(doc_id, document)
+                # await cache.set_document(doc_id, document)
                 return document
             return None
 
@@ -70,7 +70,7 @@ class Database:
             
             if row:
                 document = dict(row)
-                await cache.invalidate_document(doc_id)
+                # await cache.invalidate_document(doc_id)
                 return document
             return None
 

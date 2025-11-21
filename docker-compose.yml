@@ -1,53 +1,62 @@
+version: "3.9"
+
 services:
-  postgres:
-    image: postgres:15
+  db:
+    image: postgres:16
+    container_name: conspektor-db
     environment:
-      POSTGRES_DB: ${DB_NAME:-conspektor}
-      POSTGRES_USER: ${DB_USER:-app}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: conspektor
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./services/database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - db_data:/var/lib/postgresql/data
+      - ./services/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
-  redis:
-    image: redis:7-alpine
+  documents-service:
+    build: ./services/documents-services
+    container_name: documents-service
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/conspektor
+    depends_on:
+      - db
     ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      - "8001:8001"
+
+  collaboration-hub:
+    build: ./services/collaboration_hub
+    container_name: collaboration-hub
+    environment:
+      DOCUMENT_SERVICE_URL: http://documents-service:8001
+      # если у вас там есть ещё переменные — добавь их сюда
+    depends_on:
+      - documents-service
+    ports:
+      - "8002:8002"
 
   api-gateway:
     build: ./services/api-gateway
+    container_name: api-gateway
+    environment:
+      DOC_SERVICE_URL: http://documents-service:8001
+      COLLAB_HUB_URL: http://collaboration-hub:8002
+    depends_on:
+      - documents-service
+      - collaboration-hub
     ports:
       - "8000:8000"
-    environment:
-      - DOC_SERVICE_URL=http://document-service:8001
-      - COLLAB_HUB_URL=http://collaboration-hub:8002
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  document-service:
-    build: ./services/documents-services
-    ports:
-      - "8001:8001"
+  front-end:
+    build: ./services/front-end
+    container_name: front-end
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-app}:${DB_PASSWORD:-password}@postgres:5432/${DB_NAME:-conspektor}
+      FLASK_APP: main.py
+      FLASK_RUN_PORT: 8080
     depends_on:
-      postgres:
-        condition: service_healthy
+      - api-gateway
+    ports:
+      - "8080:8080"
 
 volumes:
-  postgres_data:
+  db_data:
