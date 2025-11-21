@@ -55,7 +55,7 @@ async def get_documents():
 
 
 @app.get("/documents/{doc_id}")
-async def get_document(doc_id: int):
+async def get_document(doc_id: str):
     """
     Получить один документ.
     Проксируется в Document Service: GET /documents/{doc_id}
@@ -64,7 +64,7 @@ async def get_document(doc_id: int):
 
 
 @app.put("/documents/{doc_id}")
-async def update_document(doc_id: int, body: dict):
+async def update_document(doc_id: str, body: dict):
     """
     Обновить документ целиком (content, title, ...).
     Проксируется в Document Service: PUT /documents/{doc_id}
