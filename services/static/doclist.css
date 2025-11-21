@@ -1,0 +1,81 @@
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  margin: 30px;
+}
+
+#panel {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#panel-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.panel-button {
+  padding: 15px 20px 15px 20px;
+  margin: 20px;
+  font-size: 15px;
+  background-color: white;
+  border: none;
+  cursor: pointer;
+}
+
+#btn-username {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+
+#my-docs {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.doc-div, .sh-doc-div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid white;
+  padding: 10px;
+  max-width: 200px;
+}
+
+  .doc-div:hover, .sh-doc-div:hover {
+    border: 2px solid black;
+  }
+
+.inner-doc-div, .sh-inner-doc-div {
+  height: 100px;
+  width: 100px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid black;
+}
+
+.sh-inner-doc-div {
+  flex-direction: column;
+}
+
+.doc-p, .sh-doc-p {
+  
+}
