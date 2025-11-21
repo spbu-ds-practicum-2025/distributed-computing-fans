@@ -2,6 +2,7 @@ import asyncpg
 import os
 from typing import List, Optional, Dict, Any
 import json
+from cache import cache
 
 class Database:
     def __init__(self):

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi import WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
 from settings import DOC_SERVICE_URL
@@ -9,6 +10,14 @@ app = FastAPI(
     title="Conspektor API Gateway",
     version="0.1.0",
     description="API Gateway for Conspektor (documents & collaboration)",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 async def forward_request_to_doc_service(method: str, path: str, json: dict | None = None):
