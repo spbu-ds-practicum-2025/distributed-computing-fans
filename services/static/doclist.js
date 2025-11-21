@@ -3,7 +3,7 @@ const logged = localStorage.getItem("logged");
 if (!logged) {
   window.location.href = "/";
 } else {
-  document.getElementById("btn-username").innerHTML = logged;
+  document.getElementById("btn-username").innerHTML = `Выйти (${logged})`;
   
   fetch(`/api/userdocs/${logged}`)
     .then(response => {
@@ -66,3 +66,6 @@ if (!logged) {
     window.location.href = "/";
   });
 }
+
+
+
