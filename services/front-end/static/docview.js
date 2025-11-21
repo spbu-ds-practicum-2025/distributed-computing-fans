@@ -70,21 +70,28 @@ async function saveDocument() {
 let ws;
 
 function setupWebSocket() {
-    ws = new WebSocket(`ws://localhost:8000/ws/documents/${docId}`);
+    const token = encodeURIComponent(currentUser);
+    const ws = new WebSocket(`ws://localhost:8000/ws/documents/${docId}?token=${token}`);
 
     ws.onopen = () => {
-        console.log("WS connected");
+        console.log("WS connected via API Gateway");
     };
 
     ws.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
-            if (msg.type === "info") {
+
+            if (msg.type === "initial") {
+                editor.innerHTML = msg.content || "";
+            } else if (msg.type === "update") {
+                editor.innerHTML = msg.content || "";
+            } else if (msg.type === "error") {
+                console.error("WS error:", msg.message);
+            } else if (msg.type === "info") {
                 console.log("WS info:", msg.message);
-            } else if (msg.type === "initial" || msg.type === "update") {
             }
         } catch (e) {
-            console.log("WS raw message:", event.data);
+            console.log("WS message (raw):", event.data);
         }
     };
 
@@ -97,7 +104,7 @@ function setupWebSocket() {
     };
 
     editor.addEventListener("input", () => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        if (ws.readyState === WebSocket.OPEN) {
             const msg = {
                 type: "change",
                 content: editor.innerHTML,
