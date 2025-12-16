@@ -61,7 +61,6 @@ async def get_documents():
     Далее запрос ушёл в Document Service: GET http://localhost:8001/documents
     """
 
-
 @app.get("/documents/{doc_id}")
 async def get_document(doc_id: str):
     """
@@ -70,6 +69,15 @@ async def get_document(doc_id: str):
     """
     return await forward_request_to_doc_service("GET", f"/documents/{doc_id}")
 
+@app.get("/users/username/{username}")
+async def get_user_by_username(username: str):
+    """Получить пользователя по username"""
+    return await forward_request_to_doc_service("GET", f"/users/username/{username}")
+
+@app.get("/documents/user/{user_id}")
+async def get_user_documents(user_id: str):
+    """Получить документы пользователя по user_id"""
+    return await forward_request_to_doc_service("GET", f"/documents/user/{user_id}")
 
 @app.put("/documents/{doc_id}")
 async def update_document(doc_id: str, body: dict):
@@ -84,7 +92,6 @@ async def update_document(doc_id: str, body: dict):
     Gateway пересылает этот JSON в Document Service.
     Document Service обновляет PostgreSQL.
     """
-
 
 @app.websocket("/ws/documents/{doc_id}")
 async def ws_docs(websocket: WebSocket, doc_id: str):

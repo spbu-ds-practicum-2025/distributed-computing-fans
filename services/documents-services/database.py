@@ -20,6 +20,16 @@ class Database:
         """Закрытие соединения"""
         if self.pool:
             await self.pool.close()
+    
+    async def get_user_by_username(self, username: str) -> Optional[Dict]:
+        """Получить пользователя по username"""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT id, email, username, created_at
+                FROM users 
+                WHERE username = $1
+            """, username)
+            return dict(row) if row else None
 
     async def get_documents(self) -> List[Dict]:
         """Получить список всех документов"""
@@ -30,7 +40,18 @@ class Database:
                 ORDER BY updated_at DESC
             """)
             return [dict(row) for row in rows]
-
+        
+    async def get_user_documents(self, user_id: str) -> List[Dict]:
+        """Получить документы пользователя по owner_id"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT id, title, content, owner_id, created_at, updated_at 
+                FROM documents 
+                WHERE owner_id = $1
+                ORDER BY updated_at DESC
+            """, user_id)
+            return [dict(row) for row in rows]
+        
     async def get_document(self, doc_id: str) -> Optional[Dict]:
         # cached = await cache.get_document(doc_id)
         # if cached:

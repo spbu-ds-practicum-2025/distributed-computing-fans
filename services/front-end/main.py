@@ -22,10 +22,22 @@ def account():
 
 
 @app.route('/api/userdocs/<username>')
-@app.route('/api/userdocs/<username>')
 def get_user_docs(username):
-    resp = requests.get(f"{API_GATEWAY_URL}/documents")
-    docs = resp.json()
+    
+    user_resp = requests.get(f"{API_GATEWAY_URL}/users/username/{username}")
+
+    if user_resp.status_code != 200:
+        return jsonify({"my_docs": [], "shared_docs": []})
+    
+    user_data = user_resp.json()
+    user_id = user_data["id"]
+    
+    docs_resp = requests.get(f"{API_GATEWAY_URL}/documents/user/{user_id}")
+    
+    if docs_resp.status_code != 200:
+        return jsonify({"error": "Failed to fetch documents"}), 500
+    
+    docs = docs_resp.json()
 
     result = {
         "my_docs": [],
