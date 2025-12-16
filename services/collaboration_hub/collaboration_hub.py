@@ -49,19 +49,25 @@ class DocumentRoom:
 
 rooms: Dict[str, DocumentRoom] = {}
 
-async def verify_token_for_document(token: str, doc_id: str) -> bool:
-    """Проверка токена в Auth Service для доступа к документу"""
-    if not AUTH_SERVICE_URL:
-        return True
+# async def verify_token_for_document(token: str, doc_id: str) -> bool:
+#     """Проверка токена в Auth Service для доступа к документу"""
+#     if not AUTH_SERVICE_URL:
+#         return True
 
-    url = f"{AUTH_SERVICE_URL.rstrip('/')}/verify?doc_id={doc_id}"
-    async with httpx.AsyncClient(timeout=5.0) as client:
-        try:
-            r = await client.post(url, json={"token": token})
-            return r.status_code == 200 and r.json().get("ok", True)
-        except Exception as e:
-            print(f"[auth error] {e}")
-            return False
+#     url = f"{AUTH_SERVICE_URL.rstrip('/')}/verify?doc_id={doc_id}"
+#     async with httpx.AsyncClient(timeout=5.0) as client:
+#         try:
+#             r = await client.post(url, json={"token": token})
+#             return r.status_code == 200 and r.json().get("ok", True)
+#         except Exception as e:
+#             print(f"[auth error] {e}")
+#             return False
+
+async def verify_token_for_document(token: str, doc_id: str) -> bool:
+    """Проверка токена для доступа к документу"""
+    # В MVP отключаем проверку через Auth Service
+    print(f"[auth] Skipping auth check for doc {doc_id} (MVP)")
+    return True
 
 
 async def fetch_document_from_document_service(doc_id: str) -> Optional[dict]:

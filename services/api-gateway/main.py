@@ -2,7 +2,7 @@ import httpx
 import asyncio
 import websockets
 from starlette.websockets import WebSocketState
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,10 +17,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 async def forward_request_to_doc_service(method: str, path: str, json: dict | None = None):
@@ -28,13 +29,20 @@ async def forward_request_to_doc_service(method: str, path: str, json: dict | No
     url = f"{DOC_SERVICE_URL}{path}"
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.request(method, url, json=json)
+            resp = await client.request(method, url, json=json, timeout=30.0)
+            
         except httpx.RequestError as e:
+            print(f"[gateway] Document Service unavailable: {e}")
             raise HTTPException(status_code=502, detail=f"Document Service unavailable: {e}") from e
 
     return JSONResponse(
         status_code=resp.status_code,
         content=resp.json() if resp.content else None,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
     )
 
 # Endpoints
@@ -91,7 +99,14 @@ async def ws_docs(websocket: WebSocket, doc_id: str):
         await websocket.close()
         return
 
-    hub_url = f"{COLLAB_HUB_URL.rstrip('/')}/ws/documents/{doc_id}?token={token}"
+    if COLLAB_HUB_URL.startswith("http://"):
+        hub_ws_url = COLLAB_HUB_URL.replace("http://", "ws://", 1)
+    elif COLLAB_HUB_URL.startswith("https://"):
+        hub_ws_url = COLLAB_HUB_URL.replace("https://", "wss://", 1)
+    else:
+        hub_ws_url = COLLAB_HUB_URL
+
+    hub_url = f"{hub_ws_url.rstrip('/')}/ws/documents/{doc_id}?token={token}"
 
     try:
         async with websockets.connect(hub_url) as hub_ws:

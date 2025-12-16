@@ -27,7 +27,8 @@ const pathParts = window.location.pathname.split('/');
 const currentUser = pathParts[2];
 const docId = pathParts[4];
 
-const GATEWAY_BASE = "http://localhost:8000";
+const GATEWAY_BASE = window.API_GATEWAY_URL || "http://localhost:8000";
+const GATEWAY_WS = window.API_GATEWAY_WS || "ws://localhost:8000";
 
 let currentTitle = "";
 
