@@ -53,10 +53,23 @@ CREATE INDEX IF NOT EXISTS idx_editing_sessions_doc_user ON editing_sessions(doc
 CREATE INDEX IF NOT EXISTS idx_editing_sessions_activity ON editing_sessions(last_activity);
 
 -- Тестовые данные
+
+-- INSERT INTO users (id, email, username) VALUES 
+--     ('11111111-1111-1111-1111-111111111111', 'test@example.com', 'testuser')
+-- ON CONFLICT (email) DO NOTHING;
+
+-- INSERT INTO documents (id, title, content, owner_id) VALUES 
+--     ('22222222-2222-2222-2222-222222222222', 'Добро пожаловать!', 'Это тестовый документ', '11111111-1111-1111-1111-111111111111')
+-- ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO users (id, email, username) VALUES 
-    ('11111111-1111-1111-1111-111111111111', 'test@example.com', 'testuser')
+    ('11111111-1111-1111-1111-111111111111', 'test1@example.com', 'testuser1'),
+    ('22222222-2222-2222-2222-222222222222', 'test2@example.com', 'testuser2'),
+    ('33333333-3333-3333-3333-333333333333', 'test3@example.com', 'testuser3')
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO documents (id, title, content, owner_id) VALUES 
-    ('22222222-2222-2222-2222-222222222222', 'Добро пожаловать!', 'Это тестовый документ', '11111111-1111-1111-1111-111111111111')
+    ('11111111-1111-1111-1111-111111111110', 'Добро пожаловать 1!', 'Это тестовый документ', '11111111-1111-1111-1111-111111111111'),
+    ('22222222-2222-2222-2222-222222222220', 'Добро пожаловать 2!', 'Это тестовый документ', '22222222-2222-2222-2222-222222222222'),
+    ('33333333-3333-3333-3333-333333333330', 'Добро пожаловать 3!', 'Это тестовый документ', '33333333-3333-3333-3333-333333333333')
 ON CONFLICT (id) DO NOTHING;

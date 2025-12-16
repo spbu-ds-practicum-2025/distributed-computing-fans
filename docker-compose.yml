@@ -13,16 +13,24 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./services/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:  # ← ДОБАВЛЯЕМ ПРОВЕРКУ ГОТОВНОСТИ БД
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   documents-service:
     build: ./services/documents-services
     container_name: documents-service
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/conspektor
-    depends_on:
-      - db
+    depends_on:  # ← ИЗМЕНЯЕМ ЗАВИСИМОСТЬ
+      db:
+        condition: service_healthy  # Ждём пока БД станет здоровой
     ports:
       - "8001:8001"
+    restart: on-failure  # ← ДОБАВЛЯЕМ АВТОПЕРЕЗАПУСК ПРИ СБОЯХ
 
   collaboration-hub:
     build: ./services/collaboration_hub

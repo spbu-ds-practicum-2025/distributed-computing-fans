@@ -1,7 +1,8 @@
-
 from flask import Flask, render_template, redirect, url_for, request, jsonify
 import json
+import requests
 
+API_GATEWAY_URL = "http://api-gateway:8000"
 
 app = Flask(
     __name__,
@@ -21,15 +22,27 @@ def account():
 
 
 @app.route('/api/userdocs/<username>')
+@app.route('/api/userdocs/<username>')
 def get_user_docs(username):
-    with open("mock_db.json", encoding='utf-8') as f:
-        db = json.load(f)
-    user_data = db.get(username)
-    if user_data:
-        return jsonify(user_data)
-    else:
-        return jsonify({"error": "User not found"}), 404
+    resp = requests.get(f"{API_GATEWAY_URL}/documents")
+    docs = resp.json()
 
+    result = {
+        "my_docs": [],
+        "shared_docs": []
+    }
+
+    for doc in docs:
+        result["my_docs"].append({
+            "id": doc["id"],
+            "title": doc["title"],
+            "content": doc["content"],
+            "created_at": doc["created_at"],
+            "modified_at": doc.get("updated_at"),
+            "shared_to": []
+        })
+
+    return jsonify(result)
 
 @app.route('/users/<user>/documents/<document>')
 def user_doc(user, document):
