@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: conspektor-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: conspektor
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./services/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:  # ← ДОБАВЛЯЕМ ПРОВЕРКУ ГОТОВНОСТИ БД
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  documents-service:
+    build: ./services/documents-services
+    container_name: documents-service
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/conspektor
+    depends_on:  # ← ИЗМЕНЯЕМ ЗАВИСИМОСТЬ
+      db:
+        condition: service_healthy  # Ждём пока БД станет здоровой
+    ports:
+      - "8001:8001"
+    restart: on-failure  # ← ДОБАВЛЯЕМ АВТОПЕРЕЗАПУСК ПРИ СБОЯХ
+
+  collaboration-hub:
+    build: ./services/collaboration_hub
+    container_name: collaboration-hub
+    environment:
+      DOCUMENT_SERVICE_URL: http://documents-service:8001
+      # если у вас там есть ещё переменные — добавь их сюда
+    depends_on:
+      - documents-service
+    ports:
+      - "8002:8002"
+
+  api-gateway:
+    build: ./services/api-gateway
+    container_name: api-gateway
+    environment:
+      DOC_SERVICE_URL: http://documents-service:8001
+      COLLAB_HUB_URL: http://collaboration-hub:8002
+    depends_on:
+      - documents-service
+      - collaboration-hub
+    ports:
+      - "8000:8000"
+
+  front-end:
+    build: ./services/front-end
+    container_name: front-end
+    environment:
+      FLASK_APP: main.py
+      FLASK_RUN_PORT: 8080
+    depends_on:
+      - api-gateway
+    ports:
+      - "8080:8080"
+
+volumes:
+  db_data:
