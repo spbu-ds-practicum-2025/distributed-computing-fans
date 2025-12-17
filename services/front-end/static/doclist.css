@@ -1,8 +1,4 @@
 
-* {
-  bordder: 1px solid red;
-}
-
 html, body {
   height: 100%;
   width: 100%;
@@ -29,6 +25,13 @@ main {
 
 #panel-buttons {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  visibility: hidden;
+}
+
+.panel-buttons-visible {
+  visibility: visible !important;
 }
 
 .panel-button {
@@ -67,6 +70,12 @@ main {
   user-select: none;
 }
 
+
+
+#info-p {
+  
+}
+
 #my-docs, #shared-docs {
   display: flex;
   flex-wrap: wrap;
@@ -95,6 +104,10 @@ main {
     border-color: #007bff;
     box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
   }
+
+.doc-selected {
+  border: 1px solid #007bff;
+}
 
 .inner-doc-div, .sh-inner-doc-div {
   height: 100px;

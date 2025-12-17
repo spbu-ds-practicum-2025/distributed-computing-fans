@@ -20,11 +20,29 @@ body {
   user-select: none;
 }
 
-.toolbar button[aria-pressed="true"] {
-  background: #007bff;
-  color: white;
-  border-color: #0056b3;
+#color-picker {
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.4rem;
+  width: 2.5rem;
+  height: 2.2rem;
+  margin-right: 0.3rem;
+  background: white;
+  box-sizing: border-box;
 }
+
+  .toolbar button[aria-pressed="true"] {
+    background: #007bff;
+    color: white;
+    border-color: #0056b3;
+  }
+  
+  #color-picker:hover {
+    border-color: #007bff;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+  }
+
 
 #editor {
   min-height: 300px;
@@ -36,3 +54,28 @@ body {
   overflow-y: auto;
   white-space: pre-wrap;
 }
+
+.foot-buttons {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#save-back {
+  padding: 0.5rem 0.8rem;
+  font-size: 1.1rem;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+  #save-back:hover {
+    background-color: #007bff;
+    color: white;
+    border-color: #0056b3;
+  }

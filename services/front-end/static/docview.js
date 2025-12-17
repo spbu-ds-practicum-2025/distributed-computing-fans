@@ -1,7 +1,12 @@
 
 const editor = document.getElementById('editor');
+
 const boldBtn = document.getElementById('bold-btn');
 const italicBtn = document.getElementById('italic-btn');
+const colorPicker = document.getElementById('color-picker');
+
+const saveBack = document.getElementById('save-back');
+
 
 function toggleCommand(command) {
     document.execCommand(command, false, null);
@@ -13,15 +18,31 @@ function updateButtonState() {
     italicBtn.setAttribute('aria-pressed', document.queryCommandState('italic'));
 }
 
+function applyColor() {
+    document.execCommand('foreColor', false, colorPicker.value);
+    updateButtonState();
+}
+
 
 boldBtn.addEventListener('click', () => toggleCommand('bold'));
 italicBtn.addEventListener('click', () => toggleCommand('italic'));
+colorPicker.addEventListener('change', applyColor);
+colorPicker.addEventListener('input', applyColor);
+
+saveBack.addEventListener('click', () => {
+    saveDocument()
+        .then(() => window.location.href = "/account")
+        .catch((err) => alert(err));
+});
 
 editor.addEventListener('keyup', updateButtonState);
 editor.addEventListener('mouseup', updateButtonState);
+editor.addEventListener('selectionchange', updateButtonState);
 
 
 updateButtonState();
+
+
 
 const pathParts = window.location.pathname.split('/');
 const currentUser = pathParts[2];
