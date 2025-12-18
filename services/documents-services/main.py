@@ -65,9 +65,19 @@ async def create_document(document_data: dict):
     """Создать новый документ"""
     title = document_data.get("title", "Новый документ")
     content = document_data.get("content", "")
-    
+    username = document_data.get("username")
+
     try:
-        document = await db.create_document(title, content)
+        
+        if username:
+            user = await db.get_user_by_username(username)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            owner_id = user["id"]
+        else:
+            owner_id = None
+
+        document = await db.create_document(title, content, owner_id)
         return document
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create document: {str(e)}")

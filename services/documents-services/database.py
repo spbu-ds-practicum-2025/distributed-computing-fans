@@ -70,14 +70,14 @@ class Database:
                 return document
             return None
 
-    async def create_document(self, title: str, content: str = "") -> Dict:
+    async def create_document(self, title: str, content: str, owner_id: str) -> Dict:
         """Создать новый документ"""
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
-                INSERT INTO documents (title, content) 
-                VALUES ($1, $2) 
+                INSERT INTO documents (title, content, owner_id) 
+                VALUES ($1, $2, $3) 
                 RETURNING id, title, content, created_at, updated_at
-            """, title, content)
+            """, title, content, owner_id)
             return dict(row)
 
     async def update_document(self, doc_id: str, title: str, content: str) -> Optional[Dict]:

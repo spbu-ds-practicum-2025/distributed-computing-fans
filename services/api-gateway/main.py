@@ -29,7 +29,10 @@ async def forward_request_to_doc_service(method: str, path: str, json: dict | No
     url = f"{DOC_SERVICE_URL}{path}"
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.request(method, url, json=json, timeout=30.0)
+            if method.upper() == "DELETE" and json is None:
+                resp = await client.request(method, url, timeout=30.0)
+            else:
+                resp = await client.request(method, url, json=json, timeout=30.0)
             
         except httpx.RequestError as e:
             print(f"[gateway] Document Service unavailable: {e}")
@@ -87,11 +90,21 @@ async def update_document(doc_id: str, body: dict):
     """
     return await forward_request_to_doc_service("PUT", f"/documents/{doc_id}", json=body)
 
+@app.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str):
     """
-    Клиент (Frontend) вызывает PUT /documents/1, посылая JSON с новым текстом документа.
-    Gateway пересылает этот JSON в Document Service.
-    Document Service обновляет PostgreSQL.
+    Удалить документ.
+    Проксируется в Document Service: DELETE /documents/{doc_id}
     """
+    return await forward_request_to_doc_service("DELETE", f"/documents/{doc_id}")
+
+@app.post("/documents")
+async def create_document(body: dict):
+    """
+    Создать новый документ.
+    Проксируется в Document Service: POST /documents
+    """
+    return await forward_request_to_doc_service("POST", "/documents", json=body)
 
 @app.websocket("/ws/documents/{doc_id}")
 async def ws_docs(websocket: WebSocket, doc_id: str):

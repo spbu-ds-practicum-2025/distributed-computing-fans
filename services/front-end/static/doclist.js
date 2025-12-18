@@ -24,13 +24,35 @@ if (!logged) {
 
       
       const deleteDoc = () => {
-        const docId = currentlySelected;
-        data = {
-          id: docId
-        }
-        asyncDeleteDoc(data);
-        // sending request to the server to DELETE
-      }
+          if (!currentlySelected) {
+              alert("Выберите документ для удаления");
+              return;
+          }
+          
+          if (!confirm("Вы уверены, что хотите удалить этот документ?")) {
+              return;
+          }
+          
+          const data = {
+              id: currentlySelected
+          };
+          
+          asyncDeleteDoc(data)
+              .then(() => {
+                  const docElement = document.querySelector(`[data-doc-id="${currentlySelected}"]`);
+                  if (docElement) {
+                      docElement.remove();
+                  }
+
+                  document.getElementById("panel-buttons").classList.remove("panel-buttons-visible");
+                  currentlySelected = null;
+                  
+                  location.reload();
+              })
+              .catch(err => {
+                  console.error("Ошибка при удалении:", err);
+              });
+      };
 
       
       const shareDoc = () => {
@@ -48,13 +70,12 @@ if (!logged) {
       
       const createDoc = () => {
         const docName = prompt("Укажите название нового файла", "Новый документ");
-        const docId = Math.max(myDocs.map((elem) => elem.id)) + 1;  // id = max_id + 1
+        if (!docName) return;
+
         data = {
-          id: docId,
           title: docName
         }
         asyncCreateDoc(data);
-        // sending request to the server to CREATE
       }
 
       
@@ -147,23 +168,33 @@ if (!logged) {
   
   async function asyncCreateDoc(data) {
       try {
+          const loggedUser = localStorage.getItem("logged");
           const body = {
             title: data.title,
-            content: ""
+            content: "",
+            username: loggedUser
           }
-          const resp = await fetch(`${GATEWAY_BASE}/documents/${data.id}`, {
-              method: "PUT",
+          const resp = await fetch(`http://localhost:8000/documents`, {
+              method: "POST",
               headers: {
                   "Content-Type": "application/json"
               },
               body: JSON.stringify(body)
           });
           if (!resp.ok) {
-              throw new Error("Не удалось создать документ");
+              const errorData = await resp.json().catch(() => ({}));
+              throw new Error(errorData.detail || "Не удалось создать документ");
           }
+
+          const newDoc = await resp.json();
+          console.log("Документ создан:", newDoc);
+          
+          location.reload();
+
       } catch (err) {
           alert(err.message);
           console.error(err);
+          throw err;
       }
   }
 
@@ -171,23 +202,23 @@ if (!logged) {
 
   async function asyncDeleteDoc(data) {
       try {
-          const body = {
-            title: data.title,
-            content: ""
-          }
-          const resp = await fetch(`${GATEWAY_BASE}/documents/${data.id}`, {
-              method: "PUT",
+          const resp = await fetch(`http://localhost:8000/documents/${data.id}`, {
+              method: "DELETE",
               headers: {
                   "Content-Type": "application/json"
-              },
-              body: JSON.stringify(body)
+              }
           });
+          
           if (!resp.ok) {
-              throw new Error("Не удалось удалить документ");
+              const errorData = await resp.json().catch(() => ({}));
+              throw new Error(errorData.detail || "Не удалось удалить документ");
           }
+          
+          return await resp.json();
       } catch (err) {
           alert(err.message);
           console.error(err);
+          throw err;
       }
   }
 
