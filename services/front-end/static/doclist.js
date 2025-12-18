@@ -15,10 +15,15 @@ if (!logged) {
     .then(db => {
       let myDocs = db.my_docs || [];
       let sharedDocs = db.shared_docs || [];
-      let currentlySelected = "#";
+      let currentlySelected = null;
 
+      document.getElementById("panel-buttons").classList.add("panel-buttons-visible");
       
       const openDoc = () => {
+        if (!currentlySelected) {
+            alert("Выберите документ для открытия");
+            return;
+        }
         window.location.href = `/users/${logged}/documents/${currentlySelected}`;
       }
 
@@ -38,33 +43,36 @@ if (!logged) {
           };
           
           asyncDeleteDoc(data)
-              .then(() => {
-                  const docElement = document.querySelector(`[data-doc-id="${currentlySelected}"]`);
-                  if (docElement) {
-                      docElement.remove();
-                  }
+              // .then(() => {
+              //     const docElement = document.querySelector(`[data-doc-id="${currentlySelected}"]`);
+              //     if (docElement) {
+              //         docElement.remove();
+              //     }
 
-                  document.getElementById("panel-buttons").classList.remove("panel-buttons-visible");
-                  currentlySelected = null;
+              //     document.getElementById("panel-buttons").classList.remove("panel-buttons-visible");
+              //     currentlySelected = null;
                   
-                  location.reload();
-              })
-              .catch(err => {
-                  console.error("Ошибка при удалении:", err);
-              });
+              //     location.reload();
+              // })
+              // .catch(err => {
+              //     console.error("Ошибка при удалении:", err);
+              // });
       };
 
       
       const shareDoc = () => {
+        if (!currentlySelected) {
+            alert("Выберите документ, чтобы поделиться им");
+            return;
+        }
         const shareTo = prompt("Укажите (через запятую и пробел) логины тех, с кем хотите поделиться доступом, например: user1, user2", "").trim().split(", ");
         if (shareTo.length === 0) return;
         const docId = currentlySelected;
         data = {
           id: docId,
-          share_to: shareTo
+          share_to: [shareTo]
         }
         asyncShareDoc(data);
-        // sending request to the server to CHANGE THE OWNERSHIP (aka append new users' names to the array of owners)
       }
 
       
@@ -88,23 +96,23 @@ if (!logged) {
       for (const doc of myDocs) {
         let docDiv = document.createElement("div");
         docDiv.classList.add("doc-div");
+        docDiv.setAttribute("data-doc-id", doc.id);
 
         docDiv.onclick = () => {
-          if (currentlySelected != doc.id) {
-            document.getElementById("panel-buttons").classList.add("panel-buttons-visible");
-            document.querySelectorAll(".doc-div").forEach((d) => {
-              if (d.id != currentlySelected) {
-                d.classList.remove("doc-selected");
-              }
-            })
-          } else {
-             document.getElementById("panel-buttons").classList.remove("panel-buttons-visible");
-          }
-          currentlySelected = doc.id;
-          docDiv.classList.toggle("doc-selected");
-        }
-     
-        
+            if (currentlySelected === doc.id) {
+                docDiv.classList.remove("doc-selected");
+                currentlySelected = null;
+            } else {
+                document.querySelectorAll(".doc-div").forEach((d) => {
+                    d.classList.remove("doc-selected");
+                });
+                
+                docDiv.classList.add("doc-selected");
+                currentlySelected = doc.id;
+                document.getElementById("panel-buttons").classList.add("panel-buttons-visible");
+            }
+        };
+
         docDiv.ondblclick = () => {
           window.location.href = `/users/${logged}/documents/${doc.id}`;
         };
@@ -124,7 +132,12 @@ if (!logged) {
       for (const doc of sharedDocs) {
         let docDiv = document.createElement("div");
         docDiv.classList.add("sh-doc-div");
-        
+        docDiv.setAttribute("data-doc-id", doc.id);
+
+        docDiv.onclick = () => {
+            console.log("Selected shared doc:", doc.id);
+        };
+
         docDiv.ondblclick = () => {
           window.location.href = `/users/${logged}/documents/${doc.id}`;
         };

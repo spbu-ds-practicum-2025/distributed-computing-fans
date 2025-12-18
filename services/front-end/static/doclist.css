@@ -27,11 +27,12 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  visibility: hidden;
+  opacity: 1;
+  transition: opacity 0.3s ease;
 }
 
 .panel-buttons-visible {
-  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .panel-button {
@@ -51,6 +52,28 @@ main {
     border-color: #0056b3;
   }
 
+.panel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f0f0f0;
+}
+
+.panel-button:disabled:hover {
+  background-color: #f0f0f0;
+  color: #333;
+  border-color: #ccc;
+  transform: none;
+  box-shadow: none;
+}
+
+.panel-button:not(:disabled):hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
   #btn-username:hover {
     cursor: pointer;
     background-color: #ff3d3d;
@@ -66,8 +89,9 @@ main {
   border: 1px solid #ccc;
   border-radius: 4px;
   padding: 0.5rem 0.8rem;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
+  transition: all 0.3s ease;
 }
 
 
