@@ -58,11 +58,6 @@ async def get_documents():
     """
     return await forward_request_to_doc_service("GET", "/documents")
 
-    """
-    Клиент прислал GET /documents
-    Gateway вызвал forward_request_to_doc_service()
-    Далее запрос ушёл в Document Service: GET http://localhost:8001/documents
-    """
 
 @app.get("/documents/{doc_id}")
 async def get_document(doc_id: str):
@@ -81,6 +76,14 @@ async def get_user_by_username(username: str):
 async def get_user_documents(user_id: str):
     """Получить документы пользователя по user_id"""
     return await forward_request_to_doc_service("GET", f"/documents/user/{user_id}")
+
+@app.get("/documents/shared/{user_id}")
+async def get_shared_documents(user_id: str):
+    """
+    Получить shared документы пользователя.
+    Проксируется в Document Service: GET /documents/shared/{user_id}
+    """
+    return await forward_request_to_doc_service("GET", f"/documents/shared/{user_id}")
 
 @app.put("/documents/{doc_id}")
 async def update_document(doc_id: str, body: dict):
@@ -154,3 +157,11 @@ async def ws_docs(websocket: WebSocket, doc_id: str):
         print(f"[gateway ws proxy error] {e}")
         if websocket.application_state != WebSocketState.DISCONNECTED:
             await websocket.close()
+
+@app.post("/documents/{doc_id}/collaborators")
+async def add_collaborators(doc_id: str, body: dict):
+    return await forward_request_to_doc_service(
+        "POST", 
+        f"/documents/{doc_id}/collaborators", 
+        json=body
+    )

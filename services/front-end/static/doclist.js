@@ -70,7 +70,7 @@ if (!logged) {
         const docId = currentlySelected;
         data = {
           id: docId,
-          share_to: [shareTo]
+          share_to: shareTo
         }
         asyncShareDoc(data);
       }
@@ -166,9 +166,6 @@ if (!logged) {
   });
 
 
-
-
-
   const pathParts = window.location.pathname.split('/');
   const currentUser = pathParts[2];
   const docId = pathParts[4];
@@ -238,11 +235,26 @@ if (!logged) {
 
   async function asyncShareDoc(data) {
       try {
-          const body = {
-            to: data.share_to
+
+          const docId = data.id;
+          const usernames = data.share_to;
+          
+          const userIds = [];
+          for (const username of usernames) {
+              const userResp = await fetch(`http://localhost:8000/users/username/${username}`);
+              if (!userResp.ok) {
+                  throw new Error(`Пользователь "${username}" не найден`);
+              }
+              const userData = await userResp.json();
+              userIds.push(userData.id);
           }
-          const resp = await fetch(`${GATEWAY_BASE}/documents/${data.id}`, {
-              method: "PUT",
+
+          const body = {
+            user_ids: userIds,
+            permission: "edit"
+          }
+          const resp = await fetch(`http://localhost:8000/documents/${docId}/collaborators`, {
+              method: "POST",
               headers: {
                   "Content-Type": "application/json"
               },
@@ -251,6 +263,9 @@ if (!logged) {
           if (!resp.ok) {
               throw new Error("Не удалось поделиться доступом");
           }
+
+          alert(`Успешно поделились документом с пользователями: ${usernames.join(", ")}`);
+
       } catch (err) {
           alert(err.message);
           console.error(err);

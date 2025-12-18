@@ -43,6 +43,27 @@ async def get_document(doc_id: str):
         raise HTTPException(status_code=404, detail="Document not found")
     return document
 
+@app.get("/documents/shared/{user_id}")
+async def get_shared_documents(user_id: str):
+    """Получить документы, к которым пользователь имеет доступ через collaborator"""
+    try:
+        async with db.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT d.id, d.title, d.content, d.owner_id, 
+                       d.created_at, d.updated_at,
+                       u.username as owner_username
+                FROM documents d
+                JOIN document_collaborators dc ON d.id = dc.document_id
+                JOIN users u ON d.owner_id = u.id
+                WHERE dc.user_id = $1
+                ORDER BY d.updated_at DESC
+            """, user_id)
+            
+            documents = [dict(row) for row in rows]
+            return documents
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
 @app.get("/users/username/{username}")
 async def get_user_by_username_endpoint(username: str):
     """Получить пользователя по username"""
@@ -81,6 +102,35 @@ async def create_document(document_data: dict):
         return document
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create document: {str(e)}")
+
+@app.post("/documents/{doc_id}/collaborators")
+async def add_collaborators(doc_id: str, request_data: dict):
+    """Добавить collaborator к документу"""
+    try:
+        user_ids = request_data.get("user_ids", [])
+        permission = request_data.get("permission", "edit")
+        
+        if not user_ids:
+            raise HTTPException(status_code=400, detail="No users specified")
+        
+        results = []
+        for user_id in user_ids:
+            success = await db.add_collaborator(doc_id, user_id, permission)
+            results.append({
+                "user_id": user_id,
+                "success": success
+            })
+        
+        if any(r["success"] for r in results):
+            return {
+                "message": "Collaborators added successfully",
+                "results": results
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Failed to add collaborators")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add collaborators: {str(e)}")
 
 @app.put("/documents/{doc_id}")
 async def update_document(doc_id: str, document_data: dict):

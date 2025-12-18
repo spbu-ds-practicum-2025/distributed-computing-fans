@@ -32,19 +32,22 @@ def get_user_docs(username):
     user_data = user_resp.json()
     user_id = user_data["id"]
     
-    docs_resp = requests.get(f"{API_GATEWAY_URL}/documents/user/{user_id}")
-    
-    if docs_resp.status_code != 200:
+    my_docs_resp = requests.get(f"{API_GATEWAY_URL}/documents/user/{user_id}")
+    if my_docs_resp.status_code != 200:
         return jsonify({"error": "Failed to fetch documents"}), 500
-    
-    docs = docs_resp.json()
+    my_docs = my_docs_resp.json()
+
+    shared_docs_resp = requests.get(f"{API_GATEWAY_URL}/documents/shared/{user_id}")
+    if shared_docs_resp.status_code != 200:
+        return jsonify({"error": "Failed to fetch documents"}), 500
+    shared_docs = shared_docs_resp.json()
 
     result = {
         "my_docs": [],
         "shared_docs": []
     }
 
-    for doc in docs:
+    for doc in my_docs:
         result["my_docs"].append({
             "id": doc["id"],
             "title": doc["title"],
@@ -52,6 +55,16 @@ def get_user_docs(username):
             "created_at": doc["created_at"],
             "modified_at": doc.get("updated_at"),
             "shared_to": []
+        })
+
+    for doc in shared_docs:
+        result["shared_docs"].append({
+            "id": doc["id"],
+            "title": doc["title"],
+            "content": doc["content"],
+            "created_at": doc["created_at"],
+            "modified_at": doc.get("updated_at"),
+            "shared_from": doc.get("owner_username") or doc.get("owner_id")
         })
 
     return jsonify(result)
