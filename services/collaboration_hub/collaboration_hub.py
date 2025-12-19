@@ -23,7 +23,7 @@ class DocumentRoom:
         self.doc_id = doc_id
         self.clients: Set[WebSocket] = set()
         self.ydoc = Y.YDoc()
-        self.yxml = self.ydoc.get_xml("content")
+        self.ytext = self.ydoc.get_text("content")
         self.lock = asyncio.Lock()
         self._save_task: Optional[asyncio.Task] = None
         self._last_change_ts: Optional[float] = None
@@ -33,13 +33,12 @@ class DocumentRoom:
         """Инициализация CRDT документа из Document Service"""
         if not self._initialized:
             with self.ydoc.begin_transaction() as txn:
-                self.yxml.delete_range(txn, 0, self.yxml.length(txn))
-                self.yxml.insert(txn, 0, initial_content)
+                self.ytext.extend(txn, initial_content)
             self._initialized = True
 
     def get_content(self) -> str:
         """Получить текущее содержимое документа"""
-        return self.yxml.to_xml()
+        return str(self.ytext)
 
     def apply_update(self, update: bytes) -> bytes:
         """

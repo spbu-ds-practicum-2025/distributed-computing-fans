@@ -1,24 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Редактирование | Конспектор</title>
-    <link rel="stylesheet" href="/static/docview.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Документ</title>
+  <link rel="stylesheet" href="/static/docview.css" />
 </head>
 <body>
-    <div class="toolbar">
-        <button id="bold-btn" aria-pressed="false" title="Жирный (Ctrl+B)"><b>Bold</b></button>
-        <button id="italic-btn" aria-pressed="false" title="Курсив (Ctrl+I)"><i>Italic</i></button>
-        <input type="color" id="color-picker" title="Цвет текста" value="#000000">
-    </div>
-    <div id="editor" contenteditable="true" aria-label="Text editor" spellcheck="true">Начните писать...</div>
-    <div class="foot-buttons">
-        <button id="save-back">Сохранить и выйти</button>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/yjs@13/dist/yjs.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/y-websocket@1/dist/y-websocket.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/y-xml@1/dist/y-xml.umd.min.js"></script>
-    <script src="/static/docview.js"></script>
+  <div class="toolbar">
+    <button id="bold-btn" type="button"><b>B</b></button>
+    <button id="italic-btn" type="button"><i>I</i></button>
+    <input id="color-picker" type="color" />
+    <button id="save-back" type="button">Сохранить и выйти</button>
+  </div>
+
+  <div id="editor" contenteditable="true">Начните писать...</div>
+
+  <!-- Yjs bundled offline during Docker build; exposes window.Y -->
+  <script src="/static/yjs.umd.js"></script>
+  <script src="/static/docview.js"></script>
 </body>
 </html>
