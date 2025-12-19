@@ -27,13 +27,19 @@ if (!logged) {
         window.location.href = `/users/${logged}/documents/${currentlySelected}`;
       }
 
-      
       const deleteDoc = () => {
           if (!currentlySelected) {
               alert("Выберите документ для удаления");
               return;
           }
           
+          const selectedElement = document.querySelector(`[data-doc-id="${currentlySelected}"]`);
+          
+          if (selectedElement && selectedElement.classList.contains("sh-doc-div")) {
+              alert("Вы не можете удалить документ, к которому имеете общий доступ");
+              return;
+          }
+
           if (!confirm("Вы уверены, что хотите удалить этот документ?")) {
               return;
           }
@@ -65,6 +71,14 @@ if (!logged) {
             alert("Выберите документ, чтобы поделиться им");
             return;
         }
+
+        const selectedElement = document.querySelector(`[data-doc-id="${currentlySelected}"]`);
+        
+        if (selectedElement && selectedElement.classList.contains("sh-doc-div")) {
+            alert("Вы не можете делиться документом, к которому имеете общий доступ");
+            return;
+        }
+
         const shareTo = prompt("Укажите (через запятую и пробел) логины тех, с кем хотите поделиться доступом, например: user1, user2", "").trim().split(", ");
         if (shareTo.length === 0) return;
         const docId = currentlySelected;
@@ -135,7 +149,12 @@ if (!logged) {
         docDiv.setAttribute("data-doc-id", doc.id);
 
         docDiv.onclick = () => {
-            console.log("Selected shared doc:", doc.id);
+          document.querySelectorAll(".doc-div, .sh-doc-div").forEach((d) => {
+              d.classList.remove("doc-selected");
+          });
+          
+          docDiv.classList.add("doc-selected");
+          currentlySelected = doc.id;
         };
 
         docDiv.ondblclick = () => {
