@@ -93,7 +93,7 @@ let ws;
 
 function setupWebSocket() {
     const token = encodeURIComponent(currentUser);
-    const ws = new WebSocket(`ws://localhost:8000/ws/documents/${docId}?token=${token}`);
+    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/documents/${docId}?token=${token}`);
 
     ws.onopen = () => {
         console.log("WS connected via API Gateway");

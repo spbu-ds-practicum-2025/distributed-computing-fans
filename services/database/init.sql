@@ -51,6 +51,9 @@ CREATE INDEX IF NOT EXISTS idx_document_versions_doc_id ON document_versions(doc
 CREATE INDEX IF NOT EXISTS idx_document_versions_created_at ON document_versions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_editing_sessions_doc_user ON editing_sessions(document_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_editing_sessions_activity ON editing_sessions(last_activity);
+CREATE INDEX IF NOT EXISTS idx_documents_owner ON documents(owner_id);
+CREATE INDEX IF NOT EXISTS idx_documents_updated ON documents(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_collaborators_user ON document_collaborators(user_id);
 
 INSERT INTO users (id, email, username) VALUES 
     ('11111111-1111-1111-1111-111111111111', 'test1@example.com', 'Boris'),
