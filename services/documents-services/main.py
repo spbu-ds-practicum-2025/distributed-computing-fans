@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import asyncio
+import httpx
 from typing import List, Dict, Any
 
 from database import db
@@ -15,10 +17,68 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+async def message_broker_poller():
+    """Фоновый процесс для чтения событий из Message Broker"""
+    broker_url = os.getenv("MESSAGE_BROKER_URL", "http://message-broker:8003")
+    client_id = "document-service-1"
+    last_event_id = -1
+    
+    print(f"[Broker] Starting poller for {broker_url}")
+    
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=35.0) as client:
+                response = await client.get(
+                    f"{broker_url}/events",
+                    params={
+                        "client_id": client_id,
+                        "last_event_id": last_event_id
+                    }
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    events = data.get("events", [])
+                    last_event_id = data.get("last_event_id", last_event_id)
+                    
+                    for event in events:
+                        await process_broker_event(event)
+                        
+                elif response.status_code >= 400:
+                    print(f"[Broker] Error {response.status_code}, retrying in 5s")
+                    await asyncio.sleep(5)
+                    
+        except Exception as e:
+            print(f"[Broker Poller Error] {e}")
+            await asyncio.sleep(5)
+
+async def process_broker_event(event: dict):
+    """Обработка события из брокера"""
+    try:
+        doc_id = event.get("document_id")
+        content = event.get("content", "")
+        
+        if doc_id and content:
+            print(f"[Broker] Processing event for doc {doc_id}")
+            
+            title = "Обновлено через брокер"
+            result = await db.update_document(doc_id, title, content)
+            
+            if result:
+                print(f"[Broker] Document {doc_id} updated successfully")
+            else:
+                print(f"[Broker] Failed to update document {doc_id}")
+                
+    except Exception as e:
+        print(f"[Broker Event Error] {e}")
+
+
 @app.on_event("startup")
 async def startup():
     """Подключение к БД при запуске"""
     await db.connect()
+    asyncio.create_task(message_broker_poller())
+    print("[Document Service] Message broker poller started")
 
 @app.on_event("shutdown")
 async def shutdown():

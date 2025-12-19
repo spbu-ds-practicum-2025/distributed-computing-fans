@@ -1,9 +1,10 @@
-
 import os
 import asyncio
 import json
 from typing import Dict, Set, Optional
 import httpx
+from datetime import datetime
+import time
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, status
 from fastapi.websockets import WebSocketState
 from fastapi.responses import JSONResponse
@@ -103,14 +104,33 @@ async def save_document_to_document_service(doc_id: str, content: str) -> bool:
 
 async def publish_event_to_broker(doc_id: str, event: dict):
     """Отправка события редактирования в Message Broker"""
-    if not MESSAGE_BROKER_URL:
+    broker_url = os.getenv("MESSAGE_BROKER_URL", "http://message-broker:8003")
+    
+    if not broker_url:
+        print("[Broker] No broker URL configured")
         return
-    url = MESSAGE_BROKER_URL.rstrip("/") + "/events"
-    async with httpx.AsyncClient(timeout=3.0) as client:
-        try:
-            await client.post(url, json={"doc_id": doc_id, "event": event})
-        except Exception as e:
-            print(f"[broker publish error] {e}")
+    
+    try:
+        broker_event = {
+            "document_id": doc_id,
+            "event_type": "document_update",
+            "content": event.get("content", ""),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            response = await client.post(
+                f"{broker_url}/events",
+                json=broker_event
+            )
+            
+            if response.status_code == 200:
+                print(f"[Broker] Event published for doc {doc_id}")
+            else:
+                print(f"[Broker] Failed to publish: {response.status_code}")
+                
+    except Exception as e:
+        print(f"[Broker Error] {e}")
 
 
 @app.websocket("/ws/documents/{doc_id}")
