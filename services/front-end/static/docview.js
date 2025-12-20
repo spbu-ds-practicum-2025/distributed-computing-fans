@@ -109,7 +109,7 @@ async function saveDocument() {
 
 saveBack?.addEventListener("click", () => {
   saveDocument()
-    .then(() => (window.location.href = "/account"))
+    .then(() => (window.location.href = `/users/${encodeURIComponent(currentUser)}/documents`))
     .catch((err) => alert(err?.message || String(err)));
 });
 

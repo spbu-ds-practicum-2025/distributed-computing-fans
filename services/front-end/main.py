@@ -69,6 +69,10 @@ def get_user_docs(username):
 
     return jsonify(result)
 
+@app.route('/users/<user>/documents')
+def user_docs(user):
+    return render_template('doclist.html')
+
 @app.route('/users/<user>/documents/<document>')
 def user_doc(user, document):
     return render_template('docview.html')
