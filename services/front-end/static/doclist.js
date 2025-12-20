@@ -181,7 +181,7 @@ document.getElementById("btn-username").addEventListener("click", () => {
 
 async function asyncCreateDoc(data) {
     try {
-        const loggedUser = localStorage.getItem("logged");
+        const loggedUser = logged;
         const body = {
           title: data.title,
           content: "",
