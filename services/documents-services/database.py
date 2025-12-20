@@ -80,18 +80,17 @@ class Database:
             """, title, content, owner_id)
             return dict(row)
 
-    async def update_document(self, doc_id: str, title: str, content: str) -> Optional[Dict]:
+    async def update_document(self, doc_id: str, content: str) -> Optional[Dict]:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 UPDATE documents 
-                SET title = $1, content = $2, updated_at = CURRENT_TIMESTAMP 
-                WHERE id = $3 
+                SET content = $1, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = $2 
                 RETURNING id, title, content, created_at, updated_at
-            """, title, content, doc_id)
+            """, content, doc_id)
             
             if row:
                 document = dict(row)
-                # await cache.invalidate_document(doc_id)
                 return document
             return None
 

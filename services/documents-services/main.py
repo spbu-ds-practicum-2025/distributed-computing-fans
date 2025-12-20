@@ -61,8 +61,7 @@ async def process_broker_event(event: dict):
         if doc_id and content:
             print(f"[Broker] Processing event for doc {doc_id}")
             
-            title = "Обновлено через брокер"
-            result = await db.update_document(doc_id, title, content)
+            result = await db.update_document(doc_id, content)
             
             if result:
                 print(f"[Broker] Document {doc_id} updated successfully")
@@ -201,7 +200,7 @@ async def update_document(doc_id: str, document_data: dict):
     if title is None or content is None:
         raise HTTPException(status_code=400, detail="Title and content are required")
     
-    document = await db.update_document(doc_id, title, content)
+    document = await db.update_document(doc_id, content)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
