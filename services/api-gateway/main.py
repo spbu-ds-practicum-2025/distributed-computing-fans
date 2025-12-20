@@ -29,7 +29,10 @@ async def forward_request_to_doc_service(method: str, path: str, json: dict | No
     url = f"{DOC_SERVICE_URL}{path}"
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.request(method, url, json=json, timeout=30.0)
+            if method.upper() == "DELETE" and json is None:
+                resp = await client.request(method, url, timeout=30.0)
+            else:
+                resp = await client.request(method, url, json=json, timeout=30.0)
             
         except httpx.RequestError as e:
             print(f"[gateway] Document Service unavailable: {e}")
@@ -55,11 +58,6 @@ async def get_documents():
     """
     return await forward_request_to_doc_service("GET", "/documents")
 
-    """
-    Клиент прислал GET /documents
-    Gateway вызвал forward_request_to_doc_service()
-    Далее запрос ушёл в Document Service: GET http://localhost:8001/documents
-    """
 
 @app.get("/documents/{doc_id}")
 async def get_document(doc_id: str):
@@ -79,6 +77,14 @@ async def get_user_documents(user_id: str):
     """Получить документы пользователя по user_id"""
     return await forward_request_to_doc_service("GET", f"/documents/user/{user_id}")
 
+@app.get("/documents/shared/{user_id}")
+async def get_shared_documents(user_id: str):
+    """
+    Получить shared документы пользователя.
+    Проксируется в Document Service: GET /documents/shared/{user_id}
+    """
+    return await forward_request_to_doc_service("GET", f"/documents/shared/{user_id}")
+
 @app.put("/documents/{doc_id}")
 async def update_document(doc_id: str, body: dict):
     """
@@ -87,11 +93,21 @@ async def update_document(doc_id: str, body: dict):
     """
     return await forward_request_to_doc_service("PUT", f"/documents/{doc_id}", json=body)
 
+@app.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str):
     """
-    Клиент (Frontend) вызывает PUT /documents/1, посылая JSON с новым текстом документа.
-    Gateway пересылает этот JSON в Document Service.
-    Document Service обновляет PostgreSQL.
+    Удалить документ.
+    Проксируется в Document Service: DELETE /documents/{doc_id}
     """
+    return await forward_request_to_doc_service("DELETE", f"/documents/{doc_id}")
+
+@app.post("/documents")
+async def create_document(body: dict):
+    """
+    Создать новый документ.
+    Проксируется в Document Service: POST /documents
+    """
+    return await forward_request_to_doc_service("POST", "/documents", json=body)
 
 @app.websocket("/ws/documents/{doc_id}")
 async def ws_docs(websocket: WebSocket, doc_id: str):
@@ -141,3 +157,11 @@ async def ws_docs(websocket: WebSocket, doc_id: str):
         print(f"[gateway ws proxy error] {e}")
         if websocket.application_state != WebSocketState.DISCONNECTED:
             await websocket.close()
+
+@app.post("/documents/{doc_id}/collaborators")
+async def add_collaborators(doc_id: str, body: dict):
+    return await forward_request_to_doc_service(
+        "POST", 
+        f"/documents/{doc_id}/collaborators", 
+        json=body
+    )
